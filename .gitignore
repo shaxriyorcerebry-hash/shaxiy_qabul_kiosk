@@ -43,3 +43,10 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# === KATTA-BINAR-BLOK-v2 (GitHub 100MB limit) ===
+/dist/
+/build/
+.dart_tool/
+/windows/flutter/ephemeral/
+*.pdb
