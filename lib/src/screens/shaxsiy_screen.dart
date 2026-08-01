@@ -9,14 +9,26 @@ import '../theme.dart';
 ///
 /// This is the single content screen of the kiosk, lifted verbatim in look
 /// from the "Shaxsiy murojaat qabuli" section of the info kiosk.
+///
+/// Purely a drawing: what to draw — server schedule, cache or built-in list —
+/// is [KioskState]'s decision, so this widget stands up in a test without a
+/// server behind it.
 class ShaxsiyScreen extends StatelessWidget {
-  const ShaxsiyScreen({super.key, required this.lang});
+  const ShaxsiyScreen({
+    super.key,
+    required this.lang,
+    required this.officials,
+    required this.intro,
+    required this.note,
+  });
 
   final Lang lang;
+  final List<QabulOfficial> officials;
+  final String intro;
+  final String note;
 
   @override
   Widget build(BuildContext context) {
-    final t = Tr(lang);
     return LayoutBuilder(
       builder: (context, box) {
         final cols = box.maxWidth > 1240 ? 3 : 2;
@@ -42,7 +54,7 @@ class ShaxsiyScreen extends StatelessWidget {
                         borderRadius: BorderRadius.circular(18),
                       ),
                       child: Text(
-                        t.shaxsiyIntro,
+                        intro,
                         style: const TextStyle(
                           fontSize: 23,
                           height: 1.45,
@@ -57,12 +69,12 @@ class ShaxsiyScreen extends StatelessWidget {
                     spacing: 20,
                     runSpacing: 20,
                     children: [
-                      for (var i = 0; i < AppData.shaxsiyQabul.length; i++)
+                      for (var i = 0; i < officials.length; i++)
                         _EnterIn(
                           delayMs: (i * 45).clamp(0, 400),
                           child: _OfficialCard(
                             index: i + 1,
-                            official: AppData.shaxsiyQabul[i],
+                            official: officials[i],
                             lang: lang,
                             width: cardWidth,
                           ),
@@ -89,7 +101,7 @@ class ShaxsiyScreen extends StatelessWidget {
                           const SizedBox(width: 12),
                           Expanded(
                             child: Text(
-                              t.shaxsiyNote,
+                              note,
                               style: const TextStyle(
                                   fontSize: 20,
                                   height: 1.45,

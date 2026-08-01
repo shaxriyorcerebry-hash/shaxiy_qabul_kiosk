@@ -27,4 +27,26 @@ class KioskConfig {
   static const String exitPassword = '20median47';
 
   static const String logoAsset = 'assets/images/xalq_qabulxona_icon.png';
+
+  /// Origin of the qabulhona backend that serves the reception schedule, or
+  /// empty to run fully offline (the kiosk then shows its built-in list).
+  static const String backendOrigin = 'https://qabulxona.gennis.uz';
+
+  /// API path prefix on that backend.
+  static const String apiPrefix = '/api';
+
+  /// Full API base, e.g. `https://qabulxona.gennis.uz/api`. Empty => offline.
+  static String get apiBase =>
+      backendOrigin.isEmpty ? '' : '$backendOrigin$apiPrefix';
+
+  /// The schedule section, shared with the info kiosk — one endpoint, one
+  /// seed, two kiosks. The backend serves it under the general
+  /// `/kiosk/info/{section}` envelope; the first draft of the contract said
+  /// `/kiosk/reception-schedule`, which is a `404`.
+  static const String receptionPath = '/kiosk/info/reception-schedule';
+
+  /// How often the kiosk asks the backend whether the schedule has changed.
+  /// An unchanged schedule costs one `304`, so this can be frequent without
+  /// being expensive.
+  static const Duration refreshEvery = Duration(minutes: 15);
 }

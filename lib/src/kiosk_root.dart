@@ -39,6 +39,9 @@ class _KioskRootState extends State<KioskRoot> with WindowListener {
     super.initState();
     windowManager.addListener(this);
     _ticker = Timer.periodic(const Duration(seconds: 1), (_) => _tick());
+    // Cache first, then the backend — never blocks the first frame, and never
+    // throws: an unreachable server just leaves the built-in schedule up.
+    unawaited(_state.start());
   }
 
   @override
@@ -129,7 +132,14 @@ class _KioskRootState extends State<KioskRoot> with WindowListener {
                         title: Tr(_state.lang).shaxsiyTitle,
                         palette: palette,
                       ),
-                      Expanded(child: ShaxsiyScreen(lang: _state.lang)),
+                      Expanded(
+                        child: ShaxsiyScreen(
+                          lang: _state.lang,
+                          officials: _state.officials,
+                          intro: _state.intro(_state.lang),
+                          note: _state.note(_state.lang),
+                        ),
+                      ),
                       FooterBar(
                         palette: palette,
                         lang: _state.lang,

@@ -50,3 +50,6 @@ app.*.map.json
 .dart_tool/
 /windows/flutter/ephemeral/
 *.pdb
+
+# Claude Code (shaxsiy)
+.claude/
