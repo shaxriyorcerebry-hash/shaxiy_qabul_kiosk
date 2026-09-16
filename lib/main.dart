@@ -20,7 +20,10 @@ Future<void> main() async {
     title: KioskConfig.orgName,
     fullScreen: !windowed,
     titleBarStyle: windowed ? TitleBarStyle.normal : TitleBarStyle.hidden,
-    minimumSize: const Size(1024, 640),
+    // Only the development window gets a minimum. The hall kiosks are
+    // portrait: at 125–150 % scaling a 1080 px screen is 720–864 logical
+    // pixels wide, and a minimum wider than that fights the fullscreen window.
+    minimumSize: windowed ? const Size(720, 640) : null,
   );
 
   await windowManager.waitUntilReadyToShow(options, () async {

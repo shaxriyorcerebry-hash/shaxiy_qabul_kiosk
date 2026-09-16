@@ -6,6 +6,7 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'config.dart';
+import 'data.dart';
 import 'kiosk_state.dart';
 import 'l10n.dart';
 import 'theme.dart';
@@ -18,14 +19,18 @@ import 'widgets/kiosk_background.dart';
 /// The root kiosk shell: owns state, the live clock and the idle-reset timer,
 /// and lays out background + header + section title + content + footer + exit.
 class KioskRoot extends StatefulWidget {
-  const KioskRoot({super.key});
+  const KioskRoot({super.key, this.state});
+
+  /// The state to draw; the kiosk makes its own. A test hands one in to lay
+  /// the whole shell out without a server behind it.
+  final KioskState? state;
 
   @override
   State<KioskRoot> createState() => _KioskRootState();
 }
 
 class _KioskRootState extends State<KioskRoot> with WindowListener {
-  final KioskState _state = KioskState();
+  late final KioskState _state = widget.state ?? KioskState();
   final ValueNotifier<DateTime> _clock = ValueNotifier(DateTime.now());
   Timer? _ticker;
   DateTime _lastActivity = DateTime.now();
@@ -71,6 +76,51 @@ class _KioskRootState extends State<KioskRoot> with WindowListener {
   }
 
   void _markActive() => _lastActivity = DateTime.now();
+
+  /// Staff held the logo: fetch now rather than wait for the timer, and say
+  /// how it went — the only sign on screen that anything happened.
+  Future<void> _staffRefresh() async {
+    final messenger = ScaffoldMessenger.of(context);
+    final t = Tr(_state.lang);
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(_notice(t.refreshing, Icons.sync_rounded));
+    final ok = await _state.refresh();
+    if (!mounted) return;
+    final done = Tr(_state.lang);
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(ok
+          ? _notice('${done.refreshDone} · ${AppData.formatTime(DateTime.now())}',
+              Icons.check_circle_outline_rounded)
+          : _notice(done.refreshFailed, Icons.cloud_off_rounded, error: true));
+  }
+
+  static SnackBar _notice(String text, IconData icon, {bool error = false}) =>
+      SnackBar(
+        behavior: SnackBarBehavior.floating,
+        width: 640,
+        duration: const Duration(seconds: 4),
+        backgroundColor:
+            error ? const Color(0xFF8A2A2A) : AppColors.primaryDark,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        content: Row(
+          children: [
+            Icon(icon, color: Colors.white, size: 26),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                text,
+                style: const TextStyle(
+                  fontSize: 19,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
 
   // Window close (Alt+F4) is blocked while prevent-close is on.
   @override
@@ -127,7 +177,12 @@ class _KioskRootState extends State<KioskRoot> with WindowListener {
                 Positioned.fill(
                   child: Column(
                     children: [
-                      HeaderBar(state: _state, palette: palette, clock: _clock),
+                      HeaderBar(
+                        state: _state,
+                        palette: palette,
+                        clock: _clock,
+                        onLogoHold: _staffRefresh,
+                      ),
                       _SectionTitle(
                         title: Tr(_state.lang).shaxsiyTitle,
                         palette: palette,

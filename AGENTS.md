@@ -14,8 +14,8 @@
 | | |
 |--|--|
 | **Ilova** | `shaxiy_qabul_kiosk` — Xalq qabulxonasi zalidagi teginish ekranli kiosk |
-| **Vazifasi** | Hokim va o'rinbosarlarning **haftalik shaxsiy qabul jadvali** — bitta ekran, navigatsiyasiz, uz · ru · en |
-| **Platforma** | **Faqat Windows** (fullscreen kiosk). `android/ ios/ linux/ macos/ web/` — Flutter standart papkalari, ishlatilmaydi |
+| **Vazifasi** | Hokim va o'rinbosarlarning **haftalik shaxsiy qabul jadvali** — bitta ekran, navigatsiyasiz, uz · ru · en. Hokim kartasi — hokim panelda belgilagan **aniq sana** bilan |
+| **Platforma** | **Faqat Windows** (fullscreen kiosk, zalda **vertikal Windows 10** qurilmalar, 1080×1920). `android/ ios/ linux/ macos/ web/` — Flutter standart papkalari, ishlatilmaydi |
 | **Mening rolim** | 🟧 Mobile |
 | **Vault loyihasi** | `qabulhona` |
 | **Hujjatlar (docs vault)** | `../Projects-FinTech/` (alohida git repo) |
@@ -40,6 +40,9 @@ git -C ../Projects-FinTech pull
 | 2 | `…/qabulhona/09 - Mobile (App)/Shaxsiy qabul (Kiosk)/00 - Shaxsiy qabul ro'yxati.md` | **⭐ Shu ilova hujjatlari** (index) |
 | 3 | `…/qabulhona/09 - Mobile (App)/Shaxsiy qabul (Kiosk)/02 - Struktura.md` | Kod tuzilmasi, jadvalning 3 pog'onali manbasi |
 | 4 | `…/qabulhona/09 - Mobile (App)/Shaxsiy qabul (Kiosk)/04 - Backend ulanishi (2026-07-28).md` | Endpoint, kesh, testlar, release |
+| 4b | `…/qabulhona/09 - Mobile (App)/Shaxsiy qabul (Kiosk)/06 - Hokim qabul vaqti (2026-09-16).md` | Hokim sanasi (`/kiosk/reception-points`), SSL ildiz sertifikati, jonli probe |
+| 4c | `…/qabulhona/09 - Mobile (App)/Shaxsiy qabul (Kiosk)/07 - Joriy kod holati v1.2.0 (2026-09-16).md` | Hokim kartasi dizayni, vertikal ekran o'lchovlari |
+| 4d | `…/qabulhona/09 - Mobile (App)/Shaxsiy qabul (Kiosk)/08 - Joriy kod holati v1.3.0 (2026-09-16).md` | **Joriy release**: qo'lda yangilash (logotip 3 s), paket |
 | 5 | `…/qabulhona/01 - Vazifalar (Todo)/03 - Mobile.md` | **⭐ Mening vazifalarim** — fayl katta (1300+ qator): `shaxiy_qabul` / `Shaxsiy qabul` bo'yicha qidiring |
 | 6 | `…/qabulhona/02 - API/18b - Shaxsiy qabul jadvali — Mobile tekshiruvi va Backend vazifasi.md` | API contract (Backend yozadi, men o'qiyman) |
 | 7 | `…/qabulhona/00 - Loyiha haqida (Project).md` | Butun platforma (kerak bo'lganda) |
@@ -65,14 +68,14 @@ Ochiq vazifa topilmasa — shuni ayt va nima qilishni **tanlov shaklida** so'ra.
 |--------|------------------|
 | Flutter / Dart | Dart SDK `^3.12.2`, lint: `flutter_lints` |
 | State | `ChangeNotifier` (`KioskState`) + `ListenableBuilder` |
-| HTTP | `dart:io` `HttpClient` (`ReceptionApi`) — tarmoq paketi yo'q |
-| Kesh | JSON fayl: `%LOCALAPPDATA%\shaxiy_qabul_kiosk\reception_schedule.json` (+ `ETag`) |
+| HTTP | `dart:io` `HttpClient` — faqat `kioskHttpClient()` (`services/tls.dart`) orqali; tarmoq paketi yo'q |
+| Kesh | `%LOCALAPPDATA%\shaxiy_qabul_kiosk\` — `reception_schedule.json` (+ `ETag`), `reception_points.json` |
 | Routing | Yo'q — `KioskRoot` ichida doim bitta `ShaxsiyScreen` |
 | Lokalizatsiya | O'zimizniki: `Lang` enum + `Tr` (`l10n.dart`) — `intl`/ARB emas |
 | Konfiguratsiya | `lib/src/config.dart` — `const` (build vaqtida), `config.json` yo'q |
 | Platforma paketlari | `window_manager` (fullscreen, preventClose), `wakelock_plus` |
 | Ikonka | `flutter_launcher_icons` (faqat Windows) ← `assets/images/xalq_qabulxona_icon.png` |
-| Test | `test/widget_test.dart` — parse, fallback, kesh, ekran |
+| Test | `test/widget_test.dart` — parse, fallback, kesh, hokim sanasi, sana formati, sertifikat, ekran · `tool/live_probe_test.dart` — jonli backend (qo'lda) |
 
 ### Papka tuzilmasi (`lib/`)
 ```
@@ -81,12 +84,15 @@ lib/
 └── src/
     ├── app.dart                     # KioskApp (MaterialApp, home = KioskRoot)
     ├── kiosk_root.dart              # shell: soat, idle-timer (90 s), chiqish, state.start()
-    ├── kiosk_state.dart             # KioskState: lang + jadval (kesh → tarmoq → har 15 daq.)
-    ├── config.dart                  # KioskConfig: tashkilot, idle, exitPassword, backendOrigin, receptionPath
+    ├── kiosk_state.dart             # KioskState: lang + jadval + hokim sanasi (kesh → tarmoq → har 5 daq.)
+    ├── config.dart                  # KioskConfig: tashkilot, idle, exitPassword, backendOrigin,
+    │                                #   receptionPath, receptionPointsPath, refreshEvery
     ├── data.dart                    # AppData.shaxsiyQabul — 9 mansabdor (FALLBACK + seed manbasi)
     ├── l10n.dart                    # Lang + Tr (uz / ru / en)
     ├── theme.dart                   # AppColors, Palette
     ├── services/reception_api.dart  # ReceptionSchedule.parse · ReceptionApi.fetch (ETag/304) · ReceptionCache
+    ├── services/hokim_reception.dart # HokimReception (next_reception_at, UTC+5) · ReceptionPointsApi · isHokimOfficial
+    ├── services/tls.dart            # kioskHttpClient() — Windows ildizlari + ichki ISRG Root X1 (BUG-001)
     ├── screens/shaxsiy_screen.dart  # sof chizuvchi: officials / intro / note parametr sifatida
     └── widgets/                     # header_bar, footer_bar, exit_button, exit_password_dialog,
                                      # info_card, kiosk_background, pressable
@@ -97,6 +103,7 @@ lib/
 flutter pub get
 flutter analyze
 flutter test
+flutter test tool/live_probe_test.dart              # jonli backend: jadval + hokim sanasi + sertifikat
 $env:KIOSK_WINDOWED = "1"; flutter run -d windows   # oynali rejim (dev, skrinshot)
 Remove-Item Env:KIOSK_WINDOWED                      # oynali rejimni o'chirish
 flutter run -d windows                              # haqiqiy kiosk rejimi (Alt+F4 bloklangan!)
@@ -105,6 +112,11 @@ flutter build windows --release                     # → build\windows\x64\runn
 ```
 
 > Kiosk rejimidan chiqish — pastdagi tugma → parol (`KioskConfig.exitPassword`).
+> Ma'lumotni darhol yangilash — tepadagi **logotipni 3 soniya** bosib turish (avtomatik — har 5 daqiqa).
+>
+> Dev mashinada `flutter` PATH da bo'lmasligi mumkin: `$env:Path = "C:\src\flutter\bin;$env:Path"`.
+> `flutter run/build -d windows` plaginlar uchun Windows **Developer Mode** ni talab qiladi
+> (`start ms-settings:developers`) — u o'chiq bo'lsa ekranni `flutter test` ichida chizib tekshiring.
 
 ### Release
 1. `pubspec.yaml` versiyasini oshir (`version:` qatori)
@@ -122,9 +134,11 @@ flutter build windows --release                     # → build\windows\x64\runn
 1. **Ekran hech qachon bo'sh qolmaydi.** Manba tartibi: backend → disk keshi → `AppData.shaxsiyQabul`.
    `info_kiosk` dagi «Ma'lumot kiritilmagan» holati bu yerga **ko'chirilmaydi**.
 2. **Endpoint:** `GET {apiBase}/kiosk/info/reception-schedule?lang=all` — `info_kiosk` bilan umumiy.
-   Birinchi qoralamadagi `/kiosk/reception-schedule` → **404**.
-3. **`ETag` / `304`:** jadval har 15 daqiqada so'raladi; o'zgarmagan jadval = bitta `304`.
-   Xato yoki timeout joriy ko'rinishni o'zgartirmaydi.
+   Eski `/kiosk/reception-schedule` 2026-09 dan **200** qaytaradi, lekin konvertsiz va **`ETag` siz** — unga o'tma.
+3. **`ETag` / `304`:** jadval va hokim sanasi har **5 daqiqada** so'raladi; o'zgarmagan jadval = bitta `304`.
+   Xato yoki timeout joriy ko'rinishni o'zgartirmaydi; bir so'rov xatosi ikkinchisini to'xtatmaydi.
+   Qo'lda yangilash (logotip 3 s, `HeaderBar.onLogoHold` → `KioskRoot._staffRefresh`) shu `refresh()` ni chaqiradi —
+   u `Future<bool>` qaytaradi va bir vaqtdagi chaqiruvlarni **bitta so'rovga** birlashtiradi. Ekranda belgisi bo'lmasin.
 4. **Parser bardoshli:** `officials`/`items`, `full_name`/`name`, `reception_day`/`day`,
    `{section, version, data}` konverti, `data: null` = kontent yo'q, bo'sh `ru`/`en` → `uz`.
    Yangi maydon qo'shsang — eski shakllar ham o'qilaversin (testlari bor).
@@ -136,12 +150,27 @@ flutter build windows --release                     # → build\windows\x64\runn
    Harakatsizlik 90 s → til `uz` ga qaytadi, ochiq dialoglar yopiladi.
 8. **Minimal paketlar:** hozir faqat `window_manager` + `wakelock_plus`.
    Yangi paket qo'shishdan oldin foydalanuvchidan **tanlov shaklida** so'ra.
+9. **Hokim sanasi** (foydalanuvchi qarori 2026-09-16): `GET {apiBase}/kiosk/reception-points` →
+   `ticket_prefix: "H"` → `next_reception_at` (UTC → Toshkent **+5**, qurilma soat mintaqasiga qaramaydi).
+   Faqat **hokim kartasi** (`isHokimOfficial`: `hokim(i)` so'zi, `o'rinbosar` emas) o'zgaradi:
+   - sana bor va qabul kuni tugamagan → haftalik qator o'rniga `24-sentabr, payshanba` + `10:00` + joy;
+   - sana yo'q yoki o'tib ketgan → «Qabul vaqti belgilanmagan» (vaqt bo'sh);
+   - ro'yxat umuman olinmagan (kesh ham yo'q) → haftalik matn qoladi.
+   Faqat **boshlanish** vaqti ko'rsatiladi — backend tugash vaqtini bermaydi (`Backend.md` TODO).
+10. **SSL:** barcha so'rovlar `kioskHttpClient()` orqali — ichki ISRG Root X1 ni olib tashlama.
+11. **Vertikal ekran birinchi:** zal kiosklari 1080×1920 portret. UI o'zgarsa tekshir:
+    1080×1920 (100%) — uz/ru/en da **aylantirishsiz** sig'sin; 864 va 720 px kenglikda (125/150%) overflow bo'lmasin.
+    Hokim kartasi (`_HokimCard`) — butun qator, ≥ 720 px yonma-yon; grid ≥ 760 px — 2 ustun; header < 1000 px — 2 qator.
+    `flutter test` dagi Ahem shrifti haqiqiydan keng — o'lchash uchun Segoe UI (`C:\Windows\Fonts`) ni `FontLoader` bilan yuklab chiz.
+12. **Release paketi:** `flutter build windows` VC++ runtime DLL'larini (`msvcp140*`, `vcruntime140*`, `concrt140`) o'zi qo'shadi — zip'da **24 fayl** bo'lishi kerak (toza Win10 uchun).
 
 ### 🛡️ Xavfsizlik
 - `exitPassword` manba kodda ochiq (`config.dart`) — u faqat zaldagi tasodifiy odamni to'xtatadi.
   Qattiqlashtirish so'ralsa → skill **`flutter-windows-security`** (SHA-256 + constant-time + backoff).
   So'ralmasa parolga tegma.
 - Qurilmada TLS xatosi chiqsa — `…/qabulhona/05 - Buglar (Bugs)/BUG-001 - Info Kiosk qurilmasida TLS sertifikat xatosi.md` (xuddi shu backend).
+  Bu kioskda ISRG Root X1 ilova ichida (`services/tls.dart`, 2026-09-16). Backend sertifikat zanjiri
+  X1 ga yetmay qolsa (Let's Encrypt cross-sign'ni olib tashlasa) — `tool/live_probe_test.dart` qizil bo'ladi → yangi ildiz qo'sh.
 
 ---
 

@@ -45,8 +45,12 @@ class KioskConfig {
   /// `/kiosk/reception-schedule`, which is a `404`.
   static const String receptionPath = '/kiosk/info/reception-schedule';
 
-  /// How often the kiosk asks the backend whether the schedule has changed.
-  /// An unchanged schedule costs one `304`, so this can be frequent without
-  /// being expensive.
-  static const Duration refreshEvery = Duration(minutes: 15);
+  /// The reception points; the governor's (`ticket_prefix: H`) carries the
+  /// date and hour the governor set in the dashboard (`next_reception_at`).
+  static const String receptionPointsPath = '/kiosk/reception-points';
+
+  /// How often the kiosk asks the backend for both. An unchanged schedule
+  /// costs one `304` and the point list is a few hundred bytes, so this is
+  /// short enough for a newly set reception date to reach the hall quickly.
+  static const Duration refreshEvery = Duration(minutes: 5);
 }

@@ -53,4 +53,45 @@ class Tr {
         'Приёмы проводятся каждую неделю в установленные день и время. Телефоны для обращений: (71) 230-24-30, (71) 230-24-31.',
         'Receptions are held weekly on the designated day and time. Phones for appeals: (71) 230-24-30, (71) 230-24-31.',
       ]);
+
+  /// The governor's card when no reception date is set, or the last one has
+  /// passed.
+  String get receptionUnset => _p(const [
+        'Qabul vaqti belgilanmagan',
+        'Время приёма не назначено',
+        'Reception time not set',
+      ]);
+
+  /// Label over the governor's dated (or not yet dated) reception.
+  String get nextReception => _p(const [
+        'Navbatdagi qabul',
+        'Ближайший приём',
+        'Next reception',
+      ]);
+
+  /// Staff refresh (long press on the logo): under way / done / failed.
+  String get refreshing => _p(const [
+        "Ma'lumot yangilanmoqda…",
+        'Обновление данных…',
+        'Updating…',
+      ]);
+
+  String get refreshDone => _p(const [
+        "Ma'lumot yangilandi",
+        'Данные обновлены',
+        'Data updated',
+      ]);
+
+  String get refreshFailed => _p(const [
+        "Server bilan bog'lanib bo'lmadi — oldingi ma'lumot ko'rsatilmoqda",
+        'Нет связи с сервером — показаны прежние данные',
+        'Could not reach the server — showing the previous data',
+      ]);
+
+  /// Label over the governor's weekly slot, while no date is known.
+  String get receptionDayLabel => _p(const [
+        'Qabul kuni',
+        'День приёма',
+        'Reception day',
+      ]);
 }

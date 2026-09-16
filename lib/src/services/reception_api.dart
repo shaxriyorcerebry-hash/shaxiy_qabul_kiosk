@@ -5,6 +5,7 @@ import 'dart:io';
 import '../config.dart';
 import '../data.dart';
 import '../l10n.dart';
+import 'tls.dart';
 
 /// The weekly reception schedule as the backend holds it: the intro banner,
 /// the closing note and the officials themselves.
@@ -156,7 +157,7 @@ class ReceptionApi {
     if (!enabled) throw const SocketException('backend not configured');
     final uri = Uri.parse('$apiBase${KioskConfig.receptionPath}?lang=all');
 
-    final client = HttpClient()..connectionTimeout = timeout;
+    final client = kioskHttpClient(timeout);
     try {
       final req = await client.getUrl(uri).timeout(timeout);
       req.headers.set(HttpHeaders.acceptHeader, 'application/json');
@@ -233,6 +234,8 @@ class ReceptionCache {
 
   File get _file => File('${dir.path}/reception_schedule.json');
 
+  File get _pointsFile => File('${dir.path}/reception_points.json');
+
   /// Whatever the last successful refresh left behind, or null. Never throws.
   Future<({ReceptionSchedule? schedule, String? etag})> read() async {
     try {
@@ -269,6 +272,30 @@ class ReceptionCache {
       );
     } catch (_) {
       // Ignored on purpose — see above.
+    }
+  }
+
+  /// The last `GET /kiosk/reception-points` list, as it arrived, or null.
+  /// Never throws.
+  Future<List<dynamic>?> readPoints() async {
+    try {
+      final file = _pointsFile;
+      if (!file.existsSync()) return null;
+      final decoded = jsonDecode(await file.readAsString());
+      return decoded is List ? decoded : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Stores the reception point list verbatim. Never throws, as [write].
+  Future<void> writePoints(List<dynamic> points) async {
+    try {
+      final file = _pointsFile;
+      await file.parent.create(recursive: true);
+      await file.writeAsString(jsonEncode(points), flush: true);
+    } catch (_) {
+      // Ignored on purpose — see [write].
     }
   }
 }

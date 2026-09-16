@@ -4,12 +4,52 @@ import 'l10n.dart';
 /// full name (Latin, with a Cyrillic variant shown for Russian), localised
 /// position, weekly reception slot and contact phone.
 class QabulOfficial {
-  const QabulOfficial(this.name, this.position, this.day, this.time, this.phone);
+  const QabulOfficial(
+    this.name,
+    this.position,
+    this.day,
+    this.time,
+    this.phone, {
+    this.location = '',
+    this.scheduled,
+  });
   final Map<Lang, String> name;
   final Map<Lang, String> position;
   final Map<Lang, String> day;
   final String time;
   final String phone;
+
+  /// Where the reception is held, when it is not the usual hall — set only
+  /// for the governor's dated reception. Empty hides the line.
+  final String location;
+
+  /// The date of the reception when it is set rather than weekly — only the
+  /// governor's. [day] still carries the same date as one line of text.
+  final ScheduledReception? scheduled;
+}
+
+/// A reception on a set date (the governor's), for the card that draws the
+/// date large rather than as a line of text.
+class ScheduledReception {
+  const ScheduledReception(this.at, {this.withYear = false});
+
+  /// Start, on the Tashkent wall clock.
+  final DateTime at;
+
+  /// The date is not in the current year, so the year is written out.
+  final bool withYear;
+}
+
+/// Whether [official] is the governor rather than a deputy.
+///
+/// Read from the Uzbek position: `hokimi` / `hokim` as a whole word. A
+/// deputy's "viloyat hokim**ining** … o'rinbosari" contains `hokimi` too, so
+/// the word boundary and the `o'rinbosar` check are both needed.
+bool isHokimOfficial(QabulOfficial official) {
+  final p = (official.position[Lang.uz] ?? '')
+      .toLowerCase()
+      .replaceAll(RegExp("['`‘’ʻʼ]"), '');
+  return RegExp(r'\bhokimi?\b').hasMatch(p) && !p.contains('orinbosar');
 }
 
 /// All localised content shown by this single-purpose reception kiosk.
@@ -227,6 +267,32 @@ class AppData {
       Lang.ru => '$wd, ${d.day} $mo ${d.year}',
       Lang.uz => '$wd, ${d.day}-$mo ${d.year}',
     };
+  }
+
+  /// A reception date: `24-sentabr` · `24 сентября` · `24 September`, with
+  /// the year only when asked.
+  static String receptionDay(DateTime d, Lang lang, {bool withYear = false}) {
+    final mo = months[lang]![d.month - 1];
+    return switch (lang) {
+      Lang.uz => withYear ? '${d.year}-yil ${d.day}-$mo' : '${d.day}-$mo',
+      Lang.ru => withYear ? '${d.day} $mo ${d.year} г.' : '${d.day} $mo',
+      Lang.en => withYear ? '${d.day} $mo ${d.year}' : '${d.day} $mo',
+    };
+  }
+
+  /// `payshanba` · `четверг` · `Thursday` — lower-case where the language
+  /// writes a weekday so after a date.
+  static String weekdayName(DateTime d, Lang lang) {
+    final wd = weekdays[lang]![d.weekday % 7];
+    return lang == Lang.en ? wd : wd.toLowerCase();
+  }
+
+  /// The two above as one line: `24-sentabr, payshanba` ·
+  /// `24 сентября, четверг` · `Thursday, 24 September`.
+  static String receptionDate(DateTime d, Lang lang, {bool withYear = false}) {
+    final day = receptionDay(d, lang, withYear: withYear);
+    final wd = weekdayName(d, lang);
+    return lang == Lang.en ? '$wd, $day' : '$day, $wd';
   }
 
   static String formatTime(DateTime d) {

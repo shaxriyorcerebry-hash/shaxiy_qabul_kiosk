@@ -1,6 +1,7 @@
 import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
 import '../config.dart';
@@ -11,21 +12,45 @@ import '../theme.dart';
 import 'pressable.dart';
 
 /// Top bar: organisation logo + name, live clock, and language switch.
+///
+/// On one row down to 1000 px. Narrower — a portrait kiosk at 125–150 %
+/// scaling — the name would be cut to "Prezidentining …", so the clock and
+/// the language switch move to a second row under it.
 class HeaderBar extends StatelessWidget {
   const HeaderBar({
     super.key,
     required this.state,
     required this.palette,
     required this.clock,
+    this.onLogoHold,
   });
 
   final KioskState state;
   final Palette palette;
   final ValueListenable<DateTime> clock;
 
+  /// Staff-only: fired after the logo is held for [logoHoldDuration]. Nothing
+  /// on screen hints at it, and it is long enough that a visitor's tap or a
+  /// resting hand does not set it off.
+  final VoidCallback? onLogoHold;
+
+  static const Duration logoHoldDuration = Duration(seconds: 3);
+
   @override
   Widget build(BuildContext context) {
     final t = Tr(state.lang);
+    final name = Text(
+      t.orgFullName,
+      maxLines: 3,
+      overflow: TextOverflow.ellipsis,
+      style: TextStyle(
+        fontSize: 19,
+        fontWeight: FontWeight.w800,
+        color: palette.headMain,
+        letterSpacing: 0.1,
+        height: 1.16,
+      ),
+    );
     return ClipRect(
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
@@ -35,44 +60,81 @@ class HeaderBar extends StatelessWidget {
             color: palette.headerBg,
             border: Border(bottom: BorderSide(color: palette.headerBorder)),
           ),
-          child: Row(
-            children: [
-              const _Logo(),
-              const SizedBox(width: 20),
-              Expanded(
-                child: Text(
-                  t.orgFullName,
-                  maxLines: 3,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 19,
-                    fontWeight: FontWeight.w800,
-                    color: palette.headMain,
-                    letterSpacing: 0.1,
-                    height: 1.16,
+          child: LayoutBuilder(
+            builder: (context, box) {
+              if (box.maxWidth >= 936) {
+                return Row(
+                  children: [
+                    _hold(const _Logo()),
+                    const SizedBox(width: 20),
+                    Expanded(child: name),
+                    const SizedBox(width: 20),
+                    _Clock(clock: clock, lang: state.lang, palette: palette),
+                    const SizedBox(width: 18),
+                    _LangSwitch(state: state, palette: palette),
+                  ],
+                );
+              }
+              return Column(
+                children: [
+                  Row(
+                    children: [
+                      _hold(const _Logo(size: 72)),
+                      const SizedBox(width: 18),
+                      Expanded(child: name),
+                    ],
                   ),
-                ),
-              ),
-              const SizedBox(width: 20),
-              _Clock(clock: clock, lang: state.lang, palette: palette),
-              const SizedBox(width: 18),
-              _LangSwitch(state: state, palette: palette),
-            ],
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      _Clock(
+                        clock: clock,
+                        lang: state.lang,
+                        palette: palette,
+                        alignEnd: false,
+                      ),
+                      const Spacer(),
+                      _LangSwitch(state: state, palette: palette),
+                    ],
+                  ),
+                ],
+              );
+            },
           ),
         ),
       ),
     );
   }
+
+  /// Wraps the logo in the long-press recogniser. `GestureDetector` only
+  /// knows the default half-second press, hence the raw detector.
+  Widget _hold(Widget logo) {
+    final onHold = onLogoHold;
+    if (onHold == null) return logo;
+    return RawGestureDetector(
+      behavior: HitTestBehavior.opaque,
+      gestures: {
+        LongPressGestureRecognizer:
+            GestureRecognizerFactoryWithHandlers<LongPressGestureRecognizer>(
+          () => LongPressGestureRecognizer(duration: logoHoldDuration),
+          (r) => r.onLongPress = onHold,
+        ),
+      },
+      child: logo,
+    );
+  }
 }
 
 class _Logo extends StatelessWidget {
-  const _Logo();
+  const _Logo({this.size = 86});
+
+  final double size;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 86,
-      height: 86,
+      width: size,
+      height: size,
       decoration: const BoxDecoration(
         shape: BoxShape.circle,
         color: Colors.white,
@@ -96,18 +158,21 @@ class _Clock extends StatelessWidget {
     required this.clock,
     required this.lang,
     required this.palette,
+    this.alignEnd = true,
   });
 
   final ValueListenable<DateTime> clock;
   final Lang lang;
   final Palette palette;
+  final bool alignEnd;
 
   @override
   Widget build(BuildContext context) {
     return ValueListenableBuilder<DateTime>(
       valueListenable: clock,
       builder: (context, now, _) => Column(
-        crossAxisAlignment: CrossAxisAlignment.end,
+        crossAxisAlignment:
+            alignEnd ? CrossAxisAlignment.end : CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
