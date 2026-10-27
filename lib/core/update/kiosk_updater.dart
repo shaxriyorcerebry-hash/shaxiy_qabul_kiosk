@@ -139,14 +139,45 @@ class KioskUpdater extends ChangeNotifier {
   /// `main()` da, `runApp` dan oldin bir marta.
   /// [canInstall] — ilovaga xos bo'shlik sharti (chop etish yo'q, e'lon
   /// o'ynamayapti va h.k.). Teginishlar bu yerda o'zi hisobga olinadi.
+  ///
+  /// Release build'da ilova **bitta nusxada** ishlaydi: ikkinchi nusxa
+  /// (yarliqdan qayta ochildi, installer + launcher birga ochdi va h.k.)
+  /// darhol `exit(0)` qiladi — ikki kiosk oynasi bir-birining ustida turmasin
+  /// va yangilanishni ikkalasi yuklamasin.
   static KioskUpdater init(
     KioskUpdateConfig config, {
     bool Function()? canInstall,
   }) {
+    if (!kIsWeb && Platform.isWindows && kReleaseMode) {
+      _ensureSingleInstance(config.installName);
+    }
     final u = KioskUpdater._(config, canInstall ?? () => true);
     _instance = u;
     u._booting = u._boot();
     return u;
+  }
+
+  /// Jarayon yopilguncha ushlab turiladi (OS qulfni o'zi bo'shatadi).
+  // ignore: unused_field
+  static RandomAccessFile? _instanceLock;
+
+  static void _ensureSingleInstance(String installName) {
+    try {
+      final base =
+          Platform.environment['LOCALAPPDATA'] ?? Directory.systemTemp.path;
+      final dir = Directory('$base\\$installName')..createSync(recursive: true);
+      final raf = File('${dir.path}\\instance.lock')
+          .openSync(mode: FileMode.append); // write emas — band faylni qirqmasin
+      try {
+        raf.lockSync(FileLock.exclusive); // band bo'lsa — darhol xato
+      } on FileSystemException {
+        raf.closeSync();
+        exit(0); // boshqa nusxa ishlayapti
+      }
+      _instanceLock = raf;
+    } on FileSystemException {
+      // qulf faylini ochib bo'lmadi — ilovani to'xtatmaymiz
+    }
   }
 
   /// Ilova «Chiqish» (PIN) orqali yopilayotganini KioskLauncher'ga bildiradi —
