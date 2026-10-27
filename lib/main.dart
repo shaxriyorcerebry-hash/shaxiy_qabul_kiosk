@@ -4,8 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:window_manager/window_manager.dart';
 
+import 'core/update/kiosk_updater.dart';
 import 'src/app.dart';
 import 'src/config.dart';
+import 'src/kiosk_root.dart';
+import 'src/services/tls.dart';
 
 /// Kiosk bootstrap: lock the window to fullscreen, block Alt+F4 / close, and
 /// keep the screen awake. Set `KIOSK_WINDOWED=1` in the environment to run in a
@@ -36,6 +39,22 @@ Future<void> main() async {
   });
 
   await WakelockPlus.enable();
+
+  // Online yangilanish (ADR-037): version.json → fonda yuklash + SHA-256 →
+  // kiosk bo'sh turganda ogohlantirish bilan jim o'rnatish. HttpClient —
+  // ilovaning o'zi ishlatadigan TLS sozlamasi (ISRG Root X1 bilan), aks holda
+  // zalda BUG-001 dagi CERTIFICATE_VERIFY_FAILED takrorlanadi.
+  KioskUpdater.init(
+    KioskUpdateConfig(
+      appKey: 'shaxiy_qabul_kiosk',
+      appTitle: 'Shaxsiy qabul',
+      installName: 'ShaxsiyQabul',
+      origin: KioskConfig.backendOrigin,
+      httpClient: () => kioskHttpClient(const Duration(seconds: 15)),
+    ),
+    // Xodim parol yoki «Sozlamalar» oynasida bo'lsa — kutamiz.
+    canInstall: () => !KioskRoot.staffDialogOpen,
+  );
 
   runApp(const KioskApp());
 }

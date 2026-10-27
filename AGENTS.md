@@ -85,7 +85,7 @@ lib/
     ├── app.dart                     # KioskApp (MaterialApp, home = KioskRoot)
     ├── kiosk_root.dart              # shell: soat, idle-timer (90 s), chiqish, state.start()
     ├── kiosk_state.dart             # KioskState: lang + jadval + hokim sanasi (kesh → tarmoq → har 5 daq.)
-    ├── config.dart                  # KioskConfig: tashkilot, idle, exitPassword, backendOrigin,
+    ├── config.dart                  # KioskConfig: tashkilot, idle, exitPasswordSha256, backendOrigin,
     │                                #   receptionPath, receptionPointsPath, refreshEvery
     ├── data.dart                    # AppData.shaxsiyQabul — 9 mansabdor (FALLBACK + seed manbasi)
     ├── l10n.dart                    # Lang + Tr (uz / ru / en)
@@ -111,7 +111,7 @@ dart run flutter_launcher_icons                     # exe ikonkasini qayta yarat
 flutter build windows --release                     # → build\windows\x64\runner\Release\
 ```
 
-> Kiosk rejimidan chiqish — pastdagi tugma → parol (`KioskConfig.exitPassword`).
+> Kiosk rejimidan chiqish — pastdagi tugma → parol (SHA-256 xeshi `KioskConfig.exitPasswordSha256`). Tugmani 2 s bosib turish — parolsiz «Sozlamalar» (online yangilanish, ADR-037).
 > Ma'lumotni darhol yangilash — tepadagi **logotipni 3 soniya** bosib turish (avtomatik — har 5 daqiqa).
 >
 > Dev mashinada `flutter` PATH da bo'lmasligi mumkin: `$env:Path = "C:\src\flutter\bin;$env:Path"`.
@@ -165,7 +165,7 @@ flutter build windows --release                     # → build\windows\x64\runn
 12. **Release paketi:** `flutter build windows` VC++ runtime DLL'larini (`msvcp140*`, `vcruntime140*`, `concrt140`) o'zi qo'shadi — zip'da **24 fayl** bo'lishi kerak (toza Win10 uchun).
 
 ### 🛡️ Xavfsizlik
-- `exitPassword` manba kodda ochiq (`config.dart`) — u faqat zaldagi tasodifiy odamni to'xtatadi.
+- Chiqish paroli kodda faqat SHA-256 xeshi (`exitPasswordSha256`, `config.dart`) — u faqat zaldagi tasodifiy odamni to'xtatadi.
   Qattiqlashtirish so'ralsa → skill **`flutter-windows-security`** (SHA-256 + constant-time + backoff).
   So'ralmasa parolga tegma.
 - Qurilmada TLS xatosi chiqsa — `…/qabulhona/05 - Buglar (Bugs)/BUG-001 - Info Kiosk qurilmasida TLS sertifikat xatosi.md` (xuddi shu backend).

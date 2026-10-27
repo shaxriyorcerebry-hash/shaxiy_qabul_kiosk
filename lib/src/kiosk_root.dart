@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:window_manager/window_manager.dart';
 
+import '../core/update/kiosk_updater.dart';
 import 'config.dart';
 import 'data.dart';
 import 'kiosk_state.dart';
@@ -15,6 +16,7 @@ import 'widgets/exit_password_dialog.dart';
 import 'widgets/footer_bar.dart';
 import 'widgets/header_bar.dart';
 import 'widgets/kiosk_background.dart';
+import 'widgets/settings_panel.dart';
 
 /// The root kiosk shell: owns state, the live clock and the idle-reset timer,
 /// and lays out background + header + section title + content + footer + exit.
@@ -24,6 +26,13 @@ class KioskRoot extends StatefulWidget {
   /// The state to draw; the kiosk makes its own. A test hands one in to lay
   /// the whole shell out without a server behind it.
   final KioskState? state;
+
+  /// Xodim oynasi (chiqish paroli yoki «Sozlamalar») hozir ekrandami.
+  ///
+  /// Yangilanish shu payt jim o'rnatilmaydi — `main()` dagi
+  /// `KioskUpdater.init(canInstall: ...)` shuni so'raydi.
+  static bool get staffDialogOpen => _staffDialogs > 0;
+  static int _staffDialogs = 0;
 
   @override
   State<KioskRoot> createState() => _KioskRootState();
@@ -38,6 +47,9 @@ class _KioskRootState extends State<KioskRoot> with WindowListener {
   /// True while the exit password prompt is on screen, so the idle timer
   /// knows to dismiss it.
   bool _exitPrompt = false;
+
+  /// «Sozlamalar» paneli ochiqmi — bo'shlik taymeri uni ham yopadi.
+  bool _settingsOpen = false;
 
   @override
   void initState() {
@@ -63,7 +75,7 @@ class _KioskRootState extends State<KioskRoot> with WindowListener {
     final idle = DateTime.now().difference(_lastActivity).inSeconds;
     // An abandoned password prompt must not sit open on a public screen, and a
     // non-default language should reset for the next visitor.
-    final dirty = _state.isDirty || _exitPrompt;
+    final dirty = _state.isDirty || _exitPrompt || _settingsOpen;
     if (idle > KioskConfig.idleSeconds && dirty) {
       _lastActivity = DateTime.now();
       // Close any open dialog (e.g. the exit prompt) before resetting.
@@ -130,17 +142,45 @@ class _KioskRootState extends State<KioskRoot> with WindowListener {
   }
 
   Future<void> _confirmExit() async {
+    if (_exitPrompt) return;
     // Leaving kiosk mode is staff-only: it takes the exit password.
     _exitPrompt = true;
-    final ok = await askExitPassword(context);
-    _exitPrompt = false;
+    KioskRoot._staffDialogs++;
+    final bool ok;
+    try {
+      ok = await askExitPassword(context);
+    } finally {
+      _exitPrompt = false;
+      KioskRoot._staffDialogs--;
+    }
     if (ok) {
+      // KioskLauncher (Shell Launcher rejimi) ilovani qayta ochmasin — bu
+      // yangilanish emas, xodimning ataylab chiqishi (ADR-037).
+      KioskUpdater.notifyExitRequested();
       await _startExplorer();
       await WakelockPlus.disable();
       await windowManager.setPreventClose(false);
       await windowManager.setFullScreen(false);
       await windowManager.destroy();
     }
+  }
+
+  /// «Chiqish» bosib turildi: xodim «Sozlamalar» paneli — parolsiz
+  /// (yangilanishni tekshirish/o'rnatish). Paneldagi «Chiqish» esa odatdagi
+  /// parolli chiqishga o'tadi.
+  Future<void> _openSettings() async {
+    if (_settingsOpen || _exitPrompt) return;
+    _markActive();
+    _settingsOpen = true;
+    KioskRoot._staffDialogs++;
+    final bool exit;
+    try {
+      exit = await showSettingsPanel(context, onActivity: _markActive);
+    } finally {
+      _settingsOpen = false;
+      KioskRoot._staffDialogs--;
+    }
+    if (exit && mounted) await _confirmExit();
   }
 
   /// Bring the Windows shell back up on the way out.
@@ -199,6 +239,7 @@ class _KioskRootState extends State<KioskRoot> with WindowListener {
                         palette: palette,
                         lang: _state.lang,
                         onExit: _confirmExit,
+                        onSettings: _openSettings,
                       ),
                     ],
                   ),

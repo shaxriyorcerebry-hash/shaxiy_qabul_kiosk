@@ -1,10 +1,18 @@
+import 'dart:convert';
 import 'dart:math' as math;
 
+import 'package:crypto/crypto.dart';
 import 'package:flutter/material.dart';
 
 import '../config.dart';
 import '../theme.dart';
 import 'pressable.dart';
+
+/// Kiritilgan matn chiqish paroliga tengmi — SHA-256 xeshlar solishtiriladi,
+/// parolning o'zi kodda saqlanmaydi ([KioskConfig.exitPasswordSha256]).
+bool isExitPassword(String input) =>
+    sha256.convert(utf8.encode(input)).toString() ==
+    KioskConfig.exitPasswordSha256;
 
 /// Asks for the kiosk exit password. Resolves to `true` only when the correct
 /// password was entered, and `false` on cancel or dismissal.
@@ -75,7 +83,7 @@ class _ExitPasswordDialogState extends State<_ExitPasswordDialog>
   }
 
   void _submit() {
-    if (_ctrl.text == KioskConfig.exitPassword) {
+    if (isExitPassword(_ctrl.text)) {
       Navigator.of(context).pop(true);
       return;
     }

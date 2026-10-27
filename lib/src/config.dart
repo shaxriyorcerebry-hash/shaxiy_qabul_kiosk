@@ -19,12 +19,15 @@ class KioskConfig {
   /// Seconds of inactivity before the kiosk resets to its default state.
   static const int idleSeconds = 90;
 
-  /// Password required to leave kiosk mode, asked for by the exit button.
+  /// Kiosk rejimidan chiqish parolining SHA-256 xeshi (kichik harfli hex).
   ///
-  /// This only stops a visitor walking up and closing the kiosk; it is
-  /// compiled into the executable and so is not a secret from anyone with
-  /// access to the files on the machine.
-  static const String exitPassword = '20median47';
+  /// Parolning o'zi kodda ochiq saqlanmaydi: kiritilgan matn xeshlanib shu
+  /// bilan solishtiriladi (`exit_password_dialog.dart`). Parolni almashtirish:
+  /// `printf '%s' 'YANGI_PAROL' | sha256sum` natijasini shu yerga yozing.
+  /// Bu faqat tashrif buyuruvchini to'xtatadi — mashinadagi fayllarga
+  /// kirgan odamdan himoya emas.
+  static const String exitPasswordSha256 =
+      '46b9b42866cf2dbb17d311a8e036bef1f14b2f7a463a5515c3b7845f004fea20';
 
   static const String logoAsset = 'assets/images/xalq_qabulxona_icon.png';
 

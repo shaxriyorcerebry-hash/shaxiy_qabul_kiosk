@@ -15,6 +15,8 @@ import 'package:shaxiy_qabul_kiosk/src/screens/shaxsiy_screen.dart';
 import 'package:shaxiy_qabul_kiosk/src/services/hokim_reception.dart';
 import 'package:shaxiy_qabul_kiosk/src/services/reception_api.dart';
 import 'package:shaxiy_qabul_kiosk/src/services/tls.dart';
+import 'package:shaxiy_qabul_kiosk/src/widgets/exit_button.dart';
+import 'package:shaxiy_qabul_kiosk/src/widgets/exit_password_dialog.dart';
 
 /// A payload in the shape the backend actually serves.
 Map<String, dynamic> _payload() => {
@@ -536,6 +538,90 @@ void main() {
         findsOneWidget,
       );
       await unmount(tester);
+    });
+  });
+
+  // ADR-037: «Chiqish» bosib turilsa — parolsiz «Sozlamalar»; oddiy bosish —
+  // avvalgidek parol oynasi.
+  group('«Chiqish» tugmasi — sozlamalar va parol', () {
+    Future<void> pumpKiosk(WidgetTester tester) async {
+      tester.view.physicalSize = const Size(1080, 1920);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      final s = _online(schedule: _served, points: () async => _points());
+      await tester.pumpWidget(MaterialApp(home: KioskRoot(state: s)));
+      await tester.pump(const Duration(milliseconds: 600));
+    }
+
+    Finder exitButton() => find.byType(ExitButton);
+
+    // Dialog o'tish animatsiyalari tugashi uchun bir necha kadr.
+    Future<void> settle(WidgetTester tester) async {
+      for (var i = 0; i < 6; i++) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+    }
+
+    Future<void> unmount(WidgetTester tester) =>
+        tester.pumpWidget(const SizedBox());
+
+    testWidgets('bosib turish — parolsiz Sozlamalar paneli', (tester) async {
+      await pumpKiosk(tester);
+      expect(KioskRoot.staffDialogOpen, isFalse);
+
+      final g = await tester.startGesture(tester.getCenter(exitButton()));
+      await tester.pump(
+          ExitButton.settingsHoldDuration + const Duration(milliseconds: 100));
+      await g.up();
+      await settle(tester);
+
+      expect(find.text('Sozlamalar'), findsOneWidget);
+      expect(find.text('Kiosk rejimidan chiqish'), findsNothing);
+      expect(KioskRoot.staffDialogOpen, isTrue);
+
+      // Paneldagi «Chiqish» — parol oynasiga o'tadi.
+      await tester.tap(find.text('Chiqish').last);
+      await settle(tester);
+      expect(find.text('Sozlamalar'), findsNothing);
+      expect(find.text('Kiosk rejimidan chiqish'), findsOneWidget);
+
+      await tester.tap(find.text('Bekor qilish'));
+      await settle(tester);
+      expect(KioskRoot.staffDialogOpen, isFalse);
+      await unmount(tester);
+    });
+
+    testWidgets('qisqa bosib turish — sozlamalar ochilmaydi', (tester) async {
+      await pumpKiosk(tester);
+      final g = await tester.startGesture(tester.getCenter(exitButton()));
+      await tester.pump(const Duration(milliseconds: 900));
+      await g.up();
+      await settle(tester);
+      expect(find.text('Sozlamalar'), findsNothing);
+
+      // Qisqa bosish tap hisoblanadi — parol oynasi; yopib qo'yamiz.
+      if (find.text('Bekor qilish').evaluate().isNotEmpty) {
+        await tester.tap(find.text('Bekor qilish'));
+        await settle(tester);
+      }
+      await unmount(tester);
+    });
+
+    testWidgets('oddiy bosish — avvalgidek parol oynasi', (tester) async {
+      await pumpKiosk(tester);
+      await tester.tap(exitButton());
+      await settle(tester);
+      expect(find.text('Kiosk rejimidan chiqish'), findsOneWidget);
+      expect(find.text('Sozlamalar'), findsNothing);
+
+      await tester.tap(find.text('Bekor qilish'));
+      await settle(tester);
+      await unmount(tester);
+    });
+
+    test("noto'g'ri parol qabul qilinmaydi", () {
+      expect(isExitPassword(''), isFalse);
+      expect(isExitPassword('12345678'), isFalse);
     });
   });
 

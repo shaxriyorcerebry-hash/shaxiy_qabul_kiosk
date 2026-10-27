@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../core/update/kiosk_update_ui.dart';
 import 'kiosk_root.dart';
 import 'theme.dart';
 
@@ -17,6 +18,8 @@ class KioskApp extends StatelessWidget {
         scaffoldBackgroundColor: AppColors.homeGradient.first,
         useMaterial3: true,
       ),
+      // Yangilanish ogohlantirishi hamma narsaning (dialoglarning ham) ustida.
+      builder: (context, child) => KioskUpdateOverlay(child: child!),
       home: const KioskRoot(),
     );
   }

@@ -53,3 +53,7 @@ app.*.map.json
 
 # Claude Code (shaxsiy)
 .claude/
+
+# Setup.exe reliz chiqishi (ADR-037)
+/dist-test/
+/dist-test-new/
