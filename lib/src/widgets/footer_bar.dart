@@ -14,16 +14,15 @@ class FooterBar extends StatelessWidget {
     super.key,
     required this.palette,
     required this.lang,
-    required this.onExit,
-    this.onSettings,
+    required this.onSettings,
   });
 
   final Palette palette;
   final Lang lang;
-  final VoidCallback onExit;
 
-  /// «Chiqish» bosib turilganda — xodim «Sozlamalar» paneli (parolsiz).
-  final VoidCallback? onSettings;
+  /// «Chiqish» bosib turilganda — xodim «Sozlamalar» paneli (yangilanish va
+  /// parolli chiqish). Bir bosish hech narsa qilmaydi.
+  final VoidCallback onSettings;
 
   @override
   Widget build(BuildContext context) {
@@ -88,7 +87,7 @@ class FooterBar extends StatelessWidget {
                   ),
                 ),
               ),
-              ExitButton(onTap: onExit, onLongPress: onSettings),
+              ExitButton(onLongPress: onSettings),
             ],
           ),
         ),

@@ -238,7 +238,6 @@ class _KioskRootState extends State<KioskRoot> with WindowListener {
                       FooterBar(
                         palette: palette,
                         lang: _state.lang,
-                        onExit: _confirmExit,
                         onSettings: _openSettings,
                       ),
                     ],

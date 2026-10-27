@@ -598,24 +598,19 @@ void main() {
       await g.up();
       await settle(tester);
       expect(find.text('Sozlamalar'), findsNothing);
-
-      // Qisqa bosish tap hisoblanadi — parol oynasi; yopib qo'yamiz.
-      if (find.text('Bekor qilish').evaluate().isNotEmpty) {
-        await tester.tap(find.text('Bekor qilish'));
-        await settle(tester);
-      }
+      // qisqa bosish endi parol oynasini ham ochmaydi
+      expect(find.text('Kiosk rejimidan chiqish'), findsNothing);
       await unmount(tester);
     });
 
-    testWidgets('oddiy bosish — avvalgidek parol oynasi', (tester) async {
+    testWidgets('oddiy bosish — hech narsa (parol ham, panel ham yo\'q)',
+        (tester) async {
       await pumpKiosk(tester);
       await tester.tap(exitButton());
       await settle(tester);
-      expect(find.text('Kiosk rejimidan chiqish'), findsOneWidget);
+      expect(find.text('Kiosk rejimidan chiqish'), findsNothing);
       expect(find.text('Sozlamalar'), findsNothing);
-
-      await tester.tap(find.text('Bekor qilish'));
-      await settle(tester);
+      expect(KioskRoot.staffDialogOpen, isFalse);
       await unmount(tester);
     });
 

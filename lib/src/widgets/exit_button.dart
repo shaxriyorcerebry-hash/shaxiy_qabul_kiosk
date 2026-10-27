@@ -6,14 +6,14 @@ import '../theme.dart';
 /// Small, discreet exit affordance shown inside the footer. It is a door icon
 /// on a blue-and-white badge.
 ///
-/// - oddiy bosish ([onTap]) — parol so'rab kiosk rejimidan chiqish;
+/// - oddiy bosish — hech narsa qilmaydi (lead qarori 2026-10-27: tashrif
+///   buyuruvchi bosib parol oynasini ochib yubormasin);
 /// - [settingsHoldDuration] bosib turish ([onLongPress]) — xodim uchun
-///   «Sozlamalar» paneli (yangilanish), parolsiz (ADR-037).
+///   «Sozlamalar» paneli: yangilanish (parolsiz) va parolli «Chiqish» (ADR-037).
 class ExitButton extends StatelessWidget {
-  const ExitButton({super.key, required this.onTap, this.onLongPress});
+  const ExitButton({super.key, required this.onLongPress});
 
-  final VoidCallback onTap;
-  final VoidCallback? onLongPress;
+  final VoidCallback onLongPress;
 
   /// «Sozlamalar» ochilishi uchun bosib turish vaqti. Tasodifiy teginish
   /// (tashrif buyuruvchi) ochib yubormasligi uchun standart yarim soniyadan
@@ -26,7 +26,7 @@ class ExitButton extends StatelessWidget {
       color: Colors.transparent,
       shape: const CircleBorder(),
       child: InkWell(
-        onTap: onTap,
+        onTap: () {}, // bir bosish — hech narsa (faqat bosilish effekti)
         customBorder: const CircleBorder(),
         child: Container(
           width: 38,
@@ -50,21 +50,18 @@ class ExitButton extends StatelessWidget {
     );
 
     // `InkWell.onLongPress` faqat standart yarim soniyani biladi — shuning
-    // uchun logodagi kabi alohida recogniser. Bosish qisqa bo'lsa, tap
-    // (parol oynasi) yutadi; [settingsHoldDuration] dan keyin — long-press.
-    final hold = onLongPress;
-    if (hold != null) {
-      button = RawGestureDetector(
-        gestures: {
-          LongPressGestureRecognizer:
-              GestureRecognizerFactoryWithHandlers<LongPressGestureRecognizer>(
-            () => LongPressGestureRecognizer(duration: settingsHoldDuration),
-            (r) => r.onLongPress = hold,
-          ),
-        },
-        child: button,
-      );
-    }
+    // uchun logodagi kabi alohida recogniser. Bosish qisqa bo'lsa — hech
+    // narsa; [settingsHoldDuration] dan keyin — long-press (Sozlamalar).
+    button = RawGestureDetector(
+      gestures: {
+        LongPressGestureRecognizer:
+            GestureRecognizerFactoryWithHandlers<LongPressGestureRecognizer>(
+          () => LongPressGestureRecognizer(duration: settingsHoldDuration),
+          (r) => r.onLongPress = onLongPress,
+        ),
+      },
+      child: button,
+    );
 
     // `manual`: Tooltip'ning o'z yarim soniyalik long-press'i arenada
     // yuqoridagi 2 soniyalik bosib turishni yutib qo'ymasin (sichqoncha
